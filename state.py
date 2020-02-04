@@ -46,37 +46,73 @@ class Tr:
                 continue
         return False
 
+class MachineInstance:
+    def __init__(self, state_machine, start_state=None, accept_states=None):
+        self.inner = state_machine
+        if start_state:
+            self.start = start_state
+        else:
+            self.start = state_machine.start
+        if accept_states:
+            self.accept_states = accept_states
+        else:
+            self.accept_states = state_machine.accept_states
+
+    def accepted(self, state):
+        return state in self.accept_states
+
+    @property
+    def transition(self):
+        return self.inner.transition
+
 class StateMachine:
     def __init__(self, _start_state='start', _accept_states=None, _include_eof=False, _drop_states=None,
                     *transitions, **ktransitions):
         self.transition = {k: v for k, v in transitions}
         self.transition.update(ktransitions)
-        self.accepted = _accept_states if _accept_states else ['accept']
+        self.accept_states = _accept_states if _accept_states else ['accept']
         self.start = _start_state if _start_state else 'start'
         self.eof = _include_eof
         self.drop = _drop_states if _drop_states else []
 
     def merge(self, part):
         self.transition.update(part.transition)
-        self.accepted += part.accepted
+        self.accept_states += part.accept_states
         self.drop += part.drop
+
+    def accepted(self, state):
+        return state in self.accept_states
 
     def run(self, events, initial=None):
         symbol, state = list(self.gen(events, initial))[-1]
-        return symbol, state, state in self.accepted
+        return symbol, state, self.accepted(state)
 
     def gen(self, events, initial=None):
         initial = initial if initial else self.start
-
+        machine_stack = []
+        state_stack = []
+        machine = self
         state = initial
+
         yield Sof, state
         for event in events:
-            state = self.transition[state](event)
+            transition = machine.transition[state]
+            if isinstance(transition, MachineInstance):
+                machine_stack.append(machine)
+                machine = transition
+                state_stack.append(machine.start)
+                state = transition.start
+            
+            state = machine.transition[state](event)
             yield event, state
             if not state:
                 return
-        if self.eof:
-            state = self.transition[state](Eof)
+            if len(machine_stack) and machine.accepted(state):
+                # drop down
+                machine = machine_stack.pop()
+                state = state_stack.pop()
+        if machine.eof:
+            state = machine.transition[state](Eof)
             yield Eof, state
 
     def words(self, events, initial=None):
@@ -93,10 +129,8 @@ class StateMachine:
         if current_state not in self.drop:
             yield current_state, "".join(map(str, bucket))
 
-    # def tr(self, self_ref, initial=None, escape=None):
-    #     inst = self.words()
-    #     def _inner(x):
-    #         state = 
+    def submachine(self, initial=None, escape=None):
+        return MachineInstance(self, start_state=initial, accept_states=escape)
 
 
 alpha = lambda x: x >= "A" and x <= "z"
@@ -132,7 +166,7 @@ lexer.merge(StateMachine(
     space = Tr(
         space = space, op = op, end = Eof, rparen = ")"
     ),
-    lparen = lexer,
+    lparen = lexer.submachine(escape='rparen'),
     rparen = Tr(
         op = op, end = Eof
     )
