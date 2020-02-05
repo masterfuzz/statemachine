@@ -109,8 +109,9 @@ class StateMachine:
                 return
             if len(machine_stack) and machine.accepted(state):
                 # drop down
+                # state = machine.escape
                 machine = machine_stack.pop()
-                state = state_stack.pop()
+                # state = state_stack.pop()
         if machine.eof:
             state = machine.transition[state](Eof)
             yield Eof, state
@@ -168,6 +169,10 @@ lexer.merge(StateMachine(
     ),
     lparen = lexer.submachine(escape='rparen'),
     rparen = Tr(
-        op = op, end = Eof
+        space = space, op = op, end = Eof
     )
 ))
+
+from treeparse import tp
+
+lex = lexer.words("hello + world")
