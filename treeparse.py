@@ -5,6 +5,20 @@
 
 #['op', 'word'...]
 
+class Leaf:
+    def __init__(self, value):
+        self.value = value
+
+class Literal(Leaf): pass
+
+class NumberLiteral(Literal):
+    def __init__(self, value):
+        self.value = float(value)
+
+class StringLiteral(Literal):
+    def __init__(self, value):
+        self.value = str(value)
+
 
 class TreeParse:
     def __init__(self, **symbol_categories):
@@ -27,9 +41,12 @@ class TreeParse:
                 cat = self.sc.get(sym, None)
                 if cat == 'leaf':
                     if sym == 'number':
-                        branch.append(float(val))
+                        branch.append(NumberLiteral(val))
+                    elif sym == 'string':
+                        branch.append(StringLiteral(val))
                     else:
-                        branch.append(val)
+                        branch.append(Leaf(val))
+
                 elif cat == 'prefix':
                     branch.append(_parse([None], lex))
                 elif cat == 'postfix':
