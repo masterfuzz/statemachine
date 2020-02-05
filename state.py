@@ -138,7 +138,7 @@ alpha = lambda x: x >= "A" and x <= "z"
 num = lambda x: x >= "0" and x <= "9"
 alnum = lambda x: alpha(x) or num(x)
 space = lambda x: x.strip() == ""
-op = lambda x: x in "+-*/="
+op = lambda x: x in "+-*/=;"
 
 lexer = StateMachine(
     _accept_states=["end"],

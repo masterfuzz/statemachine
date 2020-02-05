@@ -1,13 +1,17 @@
 from treeparse import tp, Literal, Leaf
 from state import lexer
 
+class Seperator: pass
+
 BUILTINS = {
     '+': lambda x, y: x + y,
     '-': lambda x, y: x - y,
     '*': lambda x, y: x * y,
     '/': lambda x, y: x / y,
+    ';': Seperator,
     'print': lambda *x: print(x)
 }
+
 
 class Engine:
     def __init__(self, context=None, builtins=None):
@@ -40,10 +44,17 @@ class Engine:
                 return leaf
     
     def resolve(self, tree):
-        func = self.ctx[tree[0]]
-        return func(*[
+        func = self.ctx.get(tree[0])
+        args = [
             self.resolve(arg) if type(arg) == list else self.leaf_resolve(arg)
             for arg in tree[1:]
-        ])
+        ]
+
+        if func is None:
+            return args
+        elif func == Seperator:
+            return args
+        else: 
+            return func(*args)
 
 e = Engine()
